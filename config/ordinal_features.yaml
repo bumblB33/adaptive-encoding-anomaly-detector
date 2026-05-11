@@ -1,0 +1,21 @@
+# Ordinal feature annotations for IEEE-CIS Fraud Detection.
+#
+# Map each feature name to its explicit value sequence (low to high).
+# Features listed here receive interpretability rubric score 0.70
+# (ordering confirmed and human-verified). Features NOT listed default
+# to 0.30 — unconfirmed ordering is treated as a liability, because
+# ordinal encoding on the wrong axis silently injects spurious structure
+# that downstream models pick up on.
+#
+# Example (illustrative — do not commit unverified orderings):
+#
+# card3:
+#   - 150
+#   - 185
+#   - 200
+#   - 224
+#
+# Populate during Week 1 EDA (notebooks/01_eda.ipynb), then re-run
+# tests/test_ordinal_features_yaml.py to confirm the schema holds.
+
+{}
