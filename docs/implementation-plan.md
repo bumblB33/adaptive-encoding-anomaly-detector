@@ -1,8 +1,10 @@
 # Implementation Plan: Adaptive Encoding Anomaly Detector
 
-**Status:** In progress. Week 1 complete — scaffolding pinned by tests,
-ordinal annotation seeded from EDA, Module 1 (feature profiler) built
-with passing tests. Module 2 (Week 2) is the next module to start.
+**Status:** In progress. Weeks 1 and 2 complete — scaffolding pinned by
+tests, ordinal annotation seeded from EDA, Module 1 (feature profiler)
+and Module 2 (feature segmenter) both built with passing tests.
+Module 3 (Week 3, encoding evaluation matrix) is the next module to
+start.
 **Last synced:** 2026-05-11
 **Primary repo:** adaptive-encoding-anomaly-detection (this repo)
 **Additional repos:** none
@@ -76,13 +78,29 @@ elsewhere in this doc use the lead phrase, not a positional ID.
   stratified IEEE-CIS sample produced sensible MI rankings (V-features
   dominate); the output `outputs/feature_profile.json` is gitignored
   but recomputable from `data/raw/`.
-- [ ] **Module 2 — feature segmentation.** Segments features into the 5
+- [x] **Module 2 — feature segmentation.** Segments features into the 5
   domain-labeled groups ("transaction amount", "identity/device",
   "behavioral frequency", "temporal/timing", "card/account") using a
-  hybrid of rule-based logic (cardinality and dtype) and k-means on the
-  feature-profile vector. Module 7's per-segment metrics (see *Module 7
-  — three superposition metrics* below) bind to this fixed 5-segment
-  vocabulary. **Evidence:** no `src/feature_segmenter.py` exists yet.
+  hybrid of rule-based logic (column-name patterns informed by
+  cardinality and dtype) and k-means on the feature-profile vector for
+  residuals. Module 7's per-segment metrics (see *Module 7 — three
+  superposition metrics* below) bind to this fixed 5-segment vocabulary.
+  **Evidence:** [src/feature_segmenter.py](../src/feature_segmenter.py)
+  exposes `segment_features`, `save_segments`, `load_segments`, and the
+  fixed `SEGMENT_LABELS` tuple. The rule pre-pass maps the IEEE-CIS
+  conventions (`TransactionAmt`/`dist*`, `id_*`/`Device*`/`*emaildomain`,
+  `C*`, `TransactionDT`/`D*`, `card*`/`addr*`/`M*`/`ProductCD`); residual
+  columns (e.g. `V*`) are clustered with k-means
+  (`n_clusters = min(5, n_residuals)`) on a profile vector
+  (log-cardinality, missing rate, MI, `is_categorical`) standardized
+  against the rule-mapped basis, and each cluster is mapped to the
+  rule-segment whose centroid is nearest. Behavior pinned by 29 tests in
+  [tests/test_segmenter.py](../tests/test_segmenter.py): vocabulary
+  freeze, full coverage, label-column exclusion, every parametrized
+  rule mapping, residual landing in the fixed vocabulary, default-seed
+  reproducibility, JSON round-trip, and the no-residuals edge case.
+  Smoke-run on a 50K stratified IEEE-CIS sample assigns all 433 feature
+  columns into the five labels.
 - [ ] **Module 3 — encoding evaluation matrix.** Produces
   `outputs/evaluation_matrix.csv` for the top-N features by variance
   and/or MI, where N is pinned in `config/defaults.py` as
@@ -266,6 +284,18 @@ choices, and Module 1 (feature profiler) implemented and tested.
 - [tests/test_profiler.py](../tests/test_profiler.py): 15 tests covering
   every column field plus the MI/label-isolation contract and JSON
   round-trip.
+- [src/feature_segmenter.py](../src/feature_segmenter.py): Module 2
+  implementation — `segment_features`, `save_segments`, `load_segments`,
+  and the fixed `SEGMENT_LABELS` tuple. Rule pre-pass on IEEE-CIS
+  column-name conventions, k-means residual fallback in standardized
+  profile-vector space; cluster centroids mapped back to the
+  rule-segment whose centroid is nearest, so every column lands inside
+  the fixed five-label vocabulary.
+- [tests/test_segmenter.py](../tests/test_segmenter.py): 29 tests
+  covering vocabulary freeze, full coverage, label-column exclusion,
+  every parametrized rule mapping, residual-vocab containment,
+  default-seed reproducibility, JSON round-trip, and the no-residuals
+  edge case.
 - [notebooks/01_eda.ipynb](../notebooks/01_eda.ipynb): Week-1 EDA pass —
   type distribution, categorical landscape, ordinal candidate
   investigation, narrative conclusions feeding Modules 1 and 2.
@@ -287,7 +317,9 @@ choices, and Module 1 (feature profiler) implemented and tested.
 - **Module 1, Feature Profiler:** complete.
   [src/feature_profiler.py](../src/feature_profiler.py) +
   [tests/test_profiler.py](../tests/test_profiler.py) (15 tests).
-- **Module 2, Feature Segmenter:** not started.
+- **Module 2, Feature Segmenter:** complete.
+  [src/feature_segmenter.py](../src/feature_segmenter.py) +
+  [tests/test_segmenter.py](../tests/test_segmenter.py) (29 tests).
 - **Module 3, Encoding Candidate Evaluator:** not started.
 - **Module 4, MILP Encoding Selector:** not started; PuLP + HiGHS
   declared in optional extra `milp`.
@@ -343,11 +375,25 @@ spells out the linkage by lead phrase.
 
 ### Week 2: segmentation
 
-- [ ] **Module 2 implementation.** Implement
-  `src/feature_segmenter.py`: hybrid rule-based + k-means clustering on
-  the feature-profile vector, emitting domain-labeled segments. Accepts
-  `random_state` defaulting to `config.defaults.RANDOM_SEED`. Output:
-  `outputs/segment_assignments.json`. Add `tests/test_segmenter.py`.
+- [x] **Module 2 implementation.**
+  [src/feature_segmenter.py](../src/feature_segmenter.py) exposes
+  `segment_features(profile, label_column='isFraud', random_state=RANDOM_SEED)`
+  returning `column → segment-label`, plus `save_segments` /
+  `load_segments` for the `outputs/segment_assignments.json` artifact
+  and the fixed `SEGMENT_LABELS = ("transaction amount",
+  "identity/device", "behavioral frequency", "temporal/timing",
+  "card/account")` tuple. Hybrid pipeline: a rule pre-pass mapping
+  IEEE-CIS column-name conventions (informed by cardinality and dtype)
+  followed by k-means on the feature-profile vector
+  (log-cardinality, missing rate, MI, `is_categorical`) for residual
+  columns, with `n_clusters = min(5, n_residuals)` standardized against
+  the rule-mapped basis and each cluster mapped to the nearest
+  rule-segment centroid. Behavior is pinned by 29 tests in
+  [tests/test_segmenter.py](../tests/test_segmenter.py); reproducibility
+  uses `RANDOM_SEED` from
+  [config/defaults.py](../config/defaults.py). Smoke-run on a 50K
+  stratified IEEE-CIS sample assigns all 433 feature columns into the
+  five labels.
 
 ### Week 3: encoding evaluation grid
 
@@ -512,6 +558,38 @@ exists.
 ---
 
 ## Change log
+
+### 2026-05-11 — Week 2 closeout: Module 2 (Feature Segmenter)
+
+- Added [src/feature_segmenter.py](../src/feature_segmenter.py) (Module 2)
+  with `segment_features` / `save_segments` / `load_segments` and a
+  fixed `SEGMENT_LABELS` tuple. The label column is excluded from
+  segmentation by default; the module docstring states this invariant.
+- Implementation note (potential design call worth flagging): the spec
+  describes the rule-based half of the hybrid as "rule-based logic
+  (cardinality and dtype)". In practice IEEE-CIS column-name
+  conventions (`id_*` vs `card1` vs `C1` vs `D1`) carry far more signal
+  than dtype/cardinality alone, so the rule pre-pass is column-name-
+  pattern-based with cardinality and dtype feeding the k-means residual
+  stage instead. The five-label vocabulary and the rule→segment
+  mappings are unchanged; only the form of the rule logic differs from
+  a literal reading of the spec.
+- Added [tests/test_segmenter.py](../tests/test_segmenter.py) (29
+  tests) covering vocabulary freeze, full coverage, label exclusion,
+  every parametrized rule mapping, residual-vocab containment,
+  default-seed reproducibility, JSON round-trip, and the no-residuals
+  edge case.
+- Smoke-ran the pipeline `profile_dataframe` → `segment_features` on a
+  45,663-row stratified IEEE-CIS sample (full 433-column join of
+  `train_transaction.csv` and `train_identity.csv`); every feature
+  column landed in the fixed five-label vocabulary, V-features
+  distributed across segments via the k-means path.
+- Flipped acceptance criterion *Module 2 — feature segmentation* from
+  `[ ]` to `[x]`, the *Week 2* remaining-work item to `[x]`, the
+  *Module status* row for Module 2 to "complete", and the top-of-doc
+  Status preamble to reflect that Week 2 is now closed and Module 3 is
+  the next module to start.
+- No conflicts surfaced; this is forward progress, not a re-litigation.
 
 ### 2026-05-11 — Week 1 closeout: ordinal annotation, EDA notebook, Module 1
 
