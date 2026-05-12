@@ -1,8 +1,10 @@
 # Implementation Plan: Adaptive Encoding Anomaly Detector
 
-**Status:** In progress. Week 1 scaffolding complete; remaining Week 1 work (ordinal annotation, EDA notebook, Module 1) not yet started.
+**Status:** In progress. Week 1 complete — scaffolding pinned by tests,
+ordinal annotation seeded from EDA, Module 1 (feature profiler) built
+with passing tests. Module 2 (Week 2) is the next module to start.
 **Last synced:** 2026-05-11
-**Primary repo:** portfolio (this repo)
+**Primary repo:** adaptive-encoding-anomaly-detection (this repo)
 **Additional repos:** none
 **Plan path:** docs/implementation-plan.md
 
@@ -58,12 +60,22 @@ elsewhere in this doc use the lead phrase, not a positional ID.
 
 ### Engineering claim (Modules 1 through 6)
 
-- [ ] **Module 1 — feature profile.** Produces a per-feature profile with
+- [x] **Module 1 — feature profile.** Produces a per-feature profile with
   detected type, cardinality, distribution shape, missingness rate, and
   mutual information against the binary fraud label via
   `mutual_info_classif`. The MI value is used for characterization only;
   LOF and the Module 7 MLPs never see the label as a training target.
-  **Evidence:** no `src/feature_profiler.py` exists yet.
+  **Evidence:** [src/feature_profiler.py](../src/feature_profiler.py)
+  exposes `profile_dataframe`, `save_profile`, `load_profile`; the
+  "characterization only" invariant is documented in the module
+  docstring. Behavior pinned by 15 tests in
+  [tests/test_profiler.py](../tests/test_profiler.py): coverage of every
+  column, label MI is `None`, signal columns have higher MI than noise,
+  detected-type/cardinality/missing-rate accuracy, reproducible MI under
+  a fixed `random_state`, save/load round-trip. Smoke-run on a 50K
+  stratified IEEE-CIS sample produced sensible MI rankings (V-features
+  dominate); the output `outputs/feature_profile.json` is gitignored
+  but recomputable from `data/raw/`.
 - [ ] **Module 2 — feature segmentation.** Segments features into the 5
   domain-labeled groups ("transaction amount", "identity/device",
   "behavioral frequency", "temporal/timing", "card/account") using a
@@ -212,9 +224,10 @@ elsewhere in this doc use the lead phrase, not a positional ID.
 
 ## Current state
 
-Single repo. End-of-Week-1: directory scaffold, config constants pinned
-by tests, dependency manifest with optional extras for downstream
-modules. No business-logic modules yet.
+Single repo. Week 1 complete: scaffold + pinned config + dependency
+manifest from the initial commit, plus the Week-1 deliverables built on
+top — ordinal annotation seeded, EDA notebook documenting the ordinal
+choices, and Module 1 (feature profiler) implemented and tested.
 
 ### Repo layout (what exists)
 
@@ -228,9 +241,12 @@ modules. No business-logic modules yet.
   `LOFO_MAX_FEATURES = 50`, `LOFO_MODE = "feature"`. The docstring
   documents the role of each constant.
 - [config/ordinal_features.yaml](../config/ordinal_features.yaml):
-  empty mapping `{}` with schema comments. Population is deferred to Week 1
-  EDA in `notebooks/01_eda.ipynb` per the file's own docstring and the
-  test docstring.
+  two entries — `id_34` (4-value `match_status:N` sequence) and `M4`
+  (3-value `M0`/`M1`/`M2` sequence). The defense for these (and the
+  deliberate exclusion of `id_23` and `id_15`) lives in the "Ordinal
+  candidate investigation" section of `notebooks/01_eda.ipynb`. Every
+  other categorical falls back to the 0.30 unlisted score in the
+  Module 3 rubric.
 - [tests/test_config_defaults.py](../tests/test_config_defaults.py):
   pins all five constants; one test validates `LOFO_MODE ∈ {"feature", "segment"}`.
 - [tests/test_ordinal_features_yaml.py](../tests/test_ordinal_features_yaml.py):
@@ -243,9 +259,18 @@ modules. No business-logic modules yet.
   individually.
 - [src/__init__.py](../src/__init__.py), [config/__init__.py](../config/__init__.py),
   [tests/__init__.py](../tests/__init__.py): empty package markers.
-- [demo/.gitkeep](../demo/.gitkeep), [notebooks/.gitkeep](../notebooks/.gitkeep),
-  [outputs/.gitkeep](../outputs/.gitkeep): directories exist as
-  placeholders.
+- [src/feature_profiler.py](../src/feature_profiler.py): Module 1
+  implementation — `profile_dataframe`, `save_profile`, `load_profile`.
+  The fraud label is used for MI characterization only; the module
+  docstring states this invariant explicitly.
+- [tests/test_profiler.py](../tests/test_profiler.py): 15 tests covering
+  every column field plus the MI/label-isolation contract and JSON
+  round-trip.
+- [notebooks/01_eda.ipynb](../notebooks/01_eda.ipynb): Week-1 EDA pass —
+  type distribution, categorical landscape, ordinal candidate
+  investigation, narrative conclusions feeding Modules 1 and 2.
+- [demo/.gitkeep](../demo/.gitkeep), [outputs/.gitkeep](../outputs/.gitkeep):
+  directories exist as placeholders.
 - [docs/](.): holds this plan plus the canonical spec
   [portfolio_project_plan.md](portfolio_project_plan.md) and
   design-rationale notes [rationale.md](rationale.md). All three
@@ -259,7 +284,9 @@ modules. No business-logic modules yet.
 
 ### Module status
 
-- **Module 1, Feature Profiler:** not started.
+- **Module 1, Feature Profiler:** complete.
+  [src/feature_profiler.py](../src/feature_profiler.py) +
+  [tests/test_profiler.py](../tests/test_profiler.py) (15 tests).
 - **Module 2, Feature Segmenter:** not started.
 - **Module 3, Encoding Candidate Evaluator:** not started.
 - **Module 4, MILP Encoding Selector:** not started; PuLP + HiGHS
@@ -284,27 +311,35 @@ spells out the linkage by lead phrase.
 
 ### Week 1: finish foundation
 
-- [ ] **Ordinal annotation.** Annotate ordinal features in
-  [config/ordinal_features.yaml](../config/ordinal_features.yaml)
-  during EDA, populating each known ordinal IEEE-CIS feature with its
-  explicit low-to-high value sequence. Unlisted features default to the
-  0.30 ordinal score downstream. Schema is enforced by
+- [x] **Ordinal annotation.** Two entries seeded in
+  [config/ordinal_features.yaml](../config/ordinal_features.yaml):
+  `id_34` (`match_status:-1/0/1/2`) and `M4` (`M0/M1/M2`). Every other
+  IEEE-CIS categorical falls back to the 0.30 unlisted-feature penalty
+  in the Module 3 rubric. Defense for the included pair and explicit
+  exclusion of close calls (`id_23`, `id_15`) lives in the "Ordinal
+  candidate investigation" section of
+  [notebooks/01_eda.ipynb](../notebooks/01_eda.ipynb). Schema continues
+  to pass
   [tests/test_ordinal_features_yaml.py](../tests/test_ordinal_features_yaml.py).
-  Supports the *Module 3 — encoding evaluation matrix* and *Module 4 —
-  MILP solver* criteria above by way of the interpretability rubric.
-- [ ] **Week-1 EDA notebook.** Build `notebooks/01_eda.ipynb`: type
-  distribution summary across IEEE-CIS, identification of candidate
-  ordinal features, and a written narrative. Supports *Ordinal
-  annotation* above and orients Modules 1 and 2.
-- [ ] **Module 1 implementation.** Implement
-  `src/feature_profiler.py`. Outputs `feature_profile.json` with type,
-  cardinality, distribution, missingness, and MI vs `isFraud` via
-  `mutual_info_classif`. Document the "label used for characterization
-  only" distinction in the module docstring. Add
-  `tests/test_profiler.py`. Pattern: pin constants via `config.defaults`
-  the same way
-  [tests/test_config_defaults.py](../tests/test_config_defaults.py)
-  does.
+- [x] **Week-1 EDA notebook.**
+  [notebooks/01_eda.ipynb](../notebooks/01_eda.ipynb) covers type
+  distribution across the merged 590,540 × 434 frame, the categorical
+  landscape (31 string columns, top-3 values and missingness), and an
+  ordinal candidate investigation that justifies the two entries above.
+  Final markdown cell orients Modules 1 and 2 (feature profiler
+  invariants, segment vocabulary mapping). The notebook is committed
+  unexecuted; the raw CSVs it reads from `data/raw/` are gitignored.
+- [x] **Module 1 implementation.**
+  [src/feature_profiler.py](../src/feature_profiler.py) exposes
+  `profile_dataframe(df, label_column='isFraud', random_state=RANDOM_SEED)`
+  returning per-column dtype / detected_type / cardinality / missing
+  rate / distribution / mutual information, plus `save_profile` and
+  `load_profile`. The "label used for characterization only" invariant
+  is stated in the module docstring. Behavior is pinned by 15 tests in
+  [tests/test_profiler.py](../tests/test_profiler.py); MI reproducibility
+  uses `RANDOM_SEED` from
+  [config/defaults.py](../config/defaults.py). Smoke-run on a 50K
+  stratified IEEE-CIS sample produces sensible MI rankings.
 
 ### Week 2: segmentation
 
@@ -473,6 +508,31 @@ Open Design Decisions table is resolved and reflected in this plan.
 The Week-4 LP-relaxation benchmark gate is not an open question;
 it is an explicit, gated decision that will resolve once Module 4
 exists.
+
+---
+
+## Change log
+
+### 2026-05-11 — Week 1 closeout: ordinal annotation, EDA notebook, Module 1
+
+- Populated [config/ordinal_features.yaml](../config/ordinal_features.yaml)
+  with `id_34` and `M4` (the only IEEE-CIS categoricals whose string
+  surface literally encodes an ordering); all other categoricals fall
+  back to the 0.30 unlisted score by design.
+- Added [notebooks/01_eda.ipynb](../notebooks/01_eda.ipynb): type
+  distribution, categorical cardinality table, ordinal candidate
+  investigation with explicit exclusion rationale for `id_23` and
+  `id_15`, and a closing narrative orienting Modules 1 and 2.
+- Added [src/feature_profiler.py](../src/feature_profiler.py) (Module 1)
+  with `profile_dataframe` / `save_profile` / `load_profile` and the
+  "label used for characterization only" invariant in the module
+  docstring; 15 tests in
+  [tests/test_profiler.py](../tests/test_profiler.py).
+- Flipped acceptance criterion *Module 1 — feature profile* from `[ ]`
+  to `[x]` and the three *Week 1* remaining-work items to `[x]`.
+- `.gitignore` updated to cover extracted CSVs (`data/*.csv`,
+  `data/raw/`) so the IEEE-CIS extracts stay local-only.
+- No conflicts surfaced; this is forward progress, not a re-litigation.
 
 ---
 

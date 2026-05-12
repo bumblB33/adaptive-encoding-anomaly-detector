@@ -7,15 +7,19 @@
 # ordinal encoding on the wrong axis silently injects spurious structure
 # that downstream models pick up on.
 #
-# Example (illustrative — do not commit unverified orderings):
-#
-# card3:
-#   - 150
-#   - 185
-#   - 200
-#   - 224
-#
-# Populate during Week 1 EDA (notebooks/01_eda.ipynb), then re-run
-# tests/test_ordinal_features_yaml.py to confirm the schema holds.
+# The current entries are the only IEEE-CIS categoricals whose value
+# strings literally encode an ordering. Defense for each is in
+# notebooks/01_eda.ipynb ("Ordinal candidate investigation"). Close
+# calls that we deliberately exclude (id_23 proxy types, id_15
+# Found/New/Unknown) fall back to the 0.30 unlisted score by design.
 
-{}
+id_34:
+  - "match_status:-1"
+  - "match_status:0"
+  - "match_status:1"
+  - "match_status:2"
+
+M4:
+  - M0
+  - M1
+  - M2
