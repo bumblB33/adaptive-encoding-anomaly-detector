@@ -1,16 +1,15 @@
 # Adaptive Encoding Anomaly Detector
 
-Most machine learning pipelines treat feature encoding as a preprocessing afterthought: pick one-hot, get on with the model. This project asks a different question. If encoding choices upstream of a neural network change what the network can represent, then choosing those encodings deserves the same care we give to model selection. Here, encoding selection is posed as a Mixed-Integer Linear Program, and the resulting decision matrix doubles as an auditable explanation of why each feature was encoded the way it was.
+Many machine learning pipelines treat feature encoding as a preprocessing afterthought: pick one-hot, get on with the model. If encoding choices upstream of a neural network change what the network can represent, then choosing those encodings deserves the same care as model selection. In this project, feature encoding selection is posed as a Mixed-Integer Linear Program, and the resulting decision matrix doubles as an auditable explanation of why each feature encoding was selected.
 
-Author: Brittany Walker
 
-## Two claims, separable on purpose
+## Thesis
 
-**The engineering claim.** Categorical encoding (one-hot, ordinal, target, binary, binning, passthrough) is treated as a constraint-aware optimization rather than a default. The MILP minimizes a three-term objective: detection loss, encoded dimensionality, and an interpretability rubric score. Each term is normalized onto the same scale so the weights are directly comparable. Local Outlier Factor serves as the primary anomaly detector, and the MILP-selected encoding regime is benchmarked against a uniform one-hot baseline on Precision-Recall Area Under Curve.
+Categorical encoding (one-hot, ordinal, target, binary, binning, passthrough) is treated as a constraint-aware optimization rather than a default. The MILP minimizes a three-term objective: detection loss, encoded dimensionality, and an interpretability rubric score. Each term is normalized onto the same scale so the weights are directly comparable. Local Outlier Factor serves as the primary anomaly detector, and the MILP-selected encoding regime is benchmarked against a uniform one-hot baseline on Precision-Recall Area Under Curve.
 
-**The interpretability claim.** Two multilayer perceptrons, identical in architecture, random seed, and hyperparameters, are trained on the two encoding regimes. From the first hidden layer of each, three measurements of superposition are taken: the interference matrix and its off-diagonal Frobenius norm, per-segment linear probe accuracy, and per-segment capacity. The MLP is not the anomaly detector. It is a controlled instrument for asking whether upstream encoding choices leave a measurable fingerprint on representation geometry.
+Two multilayer perceptrons are built. They're identical in architecture, random seed, and hyperparameters. One receives one-hot encoding, one is trained on presumably optimal selected encoding . For each model, three measurements of superposition are taken from the first hidden layer: the interference matrix and its off-diagonal Frobenius norm, per-segment linear probe accuracy, and per-segment capacity. The MLP is not the anomaly detector. It is a control for asking whether upstream encoding choices have a measurable impact on a model's representation geometry.
 
-These two claims stand on their own. The MILP work holds even if the geometry experiment returns a null result, and a clean null is itself worth reporting.
+Even if the geometry experiment returns a null result, a clean null is worth reporting. It may suggest the model compensates to account for suboptimal encoding via feature representation.  
 
 ## Dataset
 
