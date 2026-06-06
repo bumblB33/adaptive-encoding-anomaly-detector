@@ -1,0 +1,39 @@
+
+.claude/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.db
+*.env
+*.DS_Store
+.idea/
+.vscode/
+*.iml
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.bak
+*.tmp
+*.zip
+*.tar.gz
+
+# Raw IEEE-CIS CSV extracts (paired with *.zip rule above; download via Kaggle, see README.md)
+data/*.csv
+data/raw/
+*.egg-info/
+dist/
+build/
+
+# Test / build caches
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Pipeline outputs. Gitignored except committed sample artifacts
+outputs/*
+!outputs/.gitkeep
+!outputs/sample/
+!outputs/sample/**
