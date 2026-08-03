@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -11,8 +10,10 @@ from src import feature_profiler
 
 @pytest.fixture
 def toy_frame():
-    """Mixed-type frame: *_signal columns correlate with the label, *_noise
-    columns don't; numeric_with_nan exercises missingness."""
+    """Mixed-type frame:
+    *_signal columns correlate with the label
+    *_noise columns don't correlate with the label
+    numeric_with_nan treated as missing."""
     rng = np.random.default_rng(defaults.RANDOM_SEED)
     n = 500
     label = rng.integers(0, 2, size=n)
@@ -151,7 +152,7 @@ def test_save_load_roundtrip(toy_frame, tmp_path):
 
 
 def test_save_writes_valid_json(toy_frame, tmp_path):
-    """Output must survive plain json.load. No numpy types leaking through."""
+    """Output must survive plain json.load. No numpy types leaking."""
     profile = feature_profiler.profile_dataframe(toy_frame, label_column="label")
     out = tmp_path / "feature_profile.json"
     feature_profiler.save_profile_as_json(profile, out)

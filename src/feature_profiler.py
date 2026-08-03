@@ -35,10 +35,15 @@ def _categorical_distribution(series: pd.Series) -> dict[str, dict[str, int]]:
 def _prepare_features_for_mutual_info_classifier(
     df: pd.DataFrame, feature_cols: list[str]
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Numeric values with NaN inferred by median, categoricals label-coded with a sentinel for NaN. discrete_mask
-    flags the categoricals so sklearn treats them as discrete."""
+    """
+    - Numeric values with NaN inferred by median.
+    - Categoricals label-coded with a sentinel for NaN.
+    - discrete_mask flags categoricals so sklearn treats them as discrete.
+    """
     numerical_feature_length = len(df)
-    X = np.zeros((numerical_feature_length, len(feature_cols)), dtype=float)
+    feature_matrix_X = np.zeros(
+        (numerical_feature_length, len(feature_cols)), dtype=float
+    )
     discrete_mask = np.zeros(len(feature_cols), dtype=bool)
     for row_index, col in enumerate(feature_cols):
         numeric_series_col = df[col]
@@ -49,16 +54,16 @@ def _prepare_features_for_mutual_info_classifier(
                 if pd.isna(median):
                     median = 0.0
                 filled = filled.fillna(median)
-            X[:, row_index] = filled.to_numpy()
+            feature_matrix_X[:, row_index] = filled.to_numpy()
             discrete_mask[row_index] = False
         else:
             filled = numeric_series_col.astype("object").where(
                 ~numeric_series_col.isna(), _CATEGORICAL_MISSING_TOKEN
             )
             codes = pd.Categorical(filled).codes
-            X[:, row_index] = codes.astype(float)
+            feature_matrix_X[:, row_index] = codes.astype(float)
             discrete_mask[row_index] = True
-    return X, discrete_mask
+    return feature_matrix_X, discrete_mask
 
 
 def profile_dataframe(
@@ -66,23 +71,22 @@ def profile_dataframe(
     label_column: str = "isFraud",
     random_state: int = RANDOM_SEED,
 ) -> dict[str, dict[str, Any]]:
-    """Per-column profile: dtype, detected_type, cardinality, missing_rate,
-    distribution, and mutual information against label_column.
+    """Per-column profile: dtype, detected_type, cardinality, missing_rate, distribution,
+    and mutual information (MI) against label_column. MI is None for every column when label_column is absent.
 
-    MI uses the fraud label for characterization only. LOF and MLPs do not train on the label.
-    MI is None for every column when label_column is absent.
+    MI uses the fraud label for characterization only. Not used for segmentation or training.
     """
-    feature_cols = [c for c in df.columns if c != label_column]
+    feature_cols = [col for col in df.columns if col != label_column]
 
     if label_column in df.columns and feature_cols:
-        y = df[label_column].to_numpy()
-        label_mask = ~pd.isna(y)
-        X, discrete_mask = _prepare_features_for_mutual_info_classifier(
+        target_vector_y = df[label_column].to_numpy()
+        label_mask = ~pd.isna(target_vector_y)
+        feature_matrix_X, discrete_mask = _prepare_features_for_mutual_info_classifier(
             df.loc[label_mask, :], feature_cols
         )
         mutual_info_scores = _mutual_info_classifier(
-            X,
-            y[label_mask],
+            feature_matrix_X,
+            target_vector_y[label_mask],
             discrete_features=discrete_mask,
             random_state=random_state,
         )

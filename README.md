@@ -1,23 +1,67 @@
 # Adaptive Encoding Anomaly Detector
 
-Production machine learning pipelines may treat feature encoding as a preprocessing afterthought: pick one-hot, get on with the model. This project asks a different question. If encoding choices upstream of a neural network change what the network can represent, then choosing those encodings deserves the same care we give to model selection. Here, encoding selection is posed as a Mixed-Integer Linear Program, and the resulting decision matrix doubles as an auditable explanation of why each feature was encoded the way it was.
+Production AI/ML/deep learning pipelines may treat feature encoding and data preprocessing as an afterthought. This project asks whether encoding choices upstream of a neural network change what the network can represent. If so, then choosing those encodings deserves the same care we give to model selection. 
 
+## Summary
 
-## Two claims, separable on purpose
+This project is designed to treat encoding selection for features of data as a constraint-based optimization problem. The optimization's constraints are:
+1. Minimizing errors in the model's anomaly detection accuracy
+2. Minimizing the feature's representation size once encoded 
+3. Minimizing superposition.
 
-**Feature Engineering Selection.** Categorical encoding (one-hot, ordinal, target, binary, binning, passthrough) is treated as a constraint-aware optimization rather than a default. The MILP minimizes a three-term objective: detection loss, encoded dimensionality, and an interpretability rubric score. Each term is normalized onto the same scale so the weights are directly comparable. Local Outlier Factor serves as the primary anomaly detector, and the MILP-selected encoding regime is benchmarked against a uniform one-hot baseline on Precision-Recall Area Under Curve.
+Minimizing superposition maximizes human-readable neural-network interpretability (see below.) 
 
-**Interpretability Impact.** Two multilayer perceptrons, identical in architecture, random seed, and hyperparameters, are trained on the two encoding regimes. From the first hidden layer of each, three measurements of superposition are taken: the interference matrix and its off-diagonal Frobenius norm, per-segment linear probe accuracy, and per-segment capacity. The MLP is not the anomaly detector. It's a controlled instrument for asking whether upstream encoding choices leave a measurable fingerprint on representation geometry.
+## Representation Geometry
 
-The MILP work holds even if the geometry experiment returns a null result, and both are worth reporting.
+To test whether upstream encoding decisions actually alter the geometry of learned representations, two identical multilayer perceptrons are trained. One takes the MILP-selected encodings, and the other takes the one-hot baseline.
+
+The goal is to measure superposition, which can be understood through a filing-cabinet analogy. Consider two drawers (neurons) and fifty folders (features). Multiple folders are packed into each drawer for lack of space. As long as two folders from the same drawer are rarely needed at once, everything works fine. When they are needed at the same time, the contents become entangled, and the ability to say that a specific drawer is dedicated to a specific topic is lost.
+
+That entanglement is the cost of superposition. It's measured three ways using the frozen first-hidden-layer activations:
+
+* **Interference matrix:** Measures how much the 'folder' directions overlap in weight space, via the Frobenius norm of the off-diagonal mass.
+* **Linear probes:** Tests whether the segment label can be predicted from the activations alone. High accuracy means the 'drawer' is structured enough to be read cleanly.
+* **Capacity:** Computes the fraction of a neuron's activation variance attributable to a specific segment.****
+
+(There's a glossary in docs/glossary.md :) 
+
+## Technical Design
+
+1. **Encoding Selection Pipeline.** Feature encoding is treated as an optimization problem using a Mixed-Integer Linear Program (MILP). MILP is an optimization algorithm that chooses among discrete options, one encoding per feature, while respecting linear constraints. In the context of this project, the MILP's objective is to minimize `α·loss + β·(dim/D_max) + γ·(1−xplain)`, a weighted sum of detection error, encoded size, and un-interpretability. The solver is **PuLP + HiGHS** (a Python modeling library + open-source solver). The primary detector on the IEEE-CIS Fraud Detection dataset is Local Outlier Factor (LOF), which flags outliers by identifying data points sitting in unusually sparse neighborhoods. The MILP-selected set of encodings is then compared against a plain one-hot encoded (uniform-OHE) baseline by measuring area under the precision–recall curve (PR-AUC). PR-AUC was chosen as a metric because in the labeled dataset, fraud is rare (roughly 3.5% of transactions). PR-AUC ignores the large number of true-negative samples that another metric might reward. The pipeline also produces structured explanations for individual anomalies by running leave-one-feature-out (LOFO) on the top anomalies and features by mutual information (MI).
+
+2. **Interpretability (representation geometry).** Two identical multilayer perceptrons (MLPs) are used. These are basic feedforward neural networks. `MLP-MILP` and `MLP-OHE` are trained on the two encoding regimes. They share the same architecture, the same random seed, and the same hyperparameters. Only the inputs differ. Activations are frozen for both, and superposition for each is measured three ways. Superposition is a state where a neural network is representing more features than it has neurons. It does so by letting them share overlapping directions at the cost of interference. Interference, broadly speaking, is when no clean separation of concept representations per-neuron can be identified via probe. The three measurements used to evaluate superposition are: 
+
+(1) The interference matrix `Wᵀ·W` (summarized by the off-diagonal Frobenius norm) 
+(2) Per-segment linear-probe accuracy, measuring for interference. (3) Per-segment capacity: the fraction of each neuron's activation variance attributable to each segment. MLPs are controlled instruments for studying representation geometry. They are distinct from the anomaly detection.
+If the geometry experiment returns a null result, that's also interesting. It may suggest that the network compensates in some way for 'less optimal' encodings, which would warrant further research. 
+
+---
+
+## The MILP Objective
+
+The optimization solver minimizes three factors: anomaly detection loss, encoded dimensionality, and un-interpretability. The objective is defined as `α·loss + β·(dim/D_max) + γ·(1−xplain)`.
+
+`D_max` represents the maximum possible dimensionality if every feature used its most expensive encoding. Dividing by this precomputed constant scales all three terms into the 0 to 1 range.
+
+**Note** Without dividing the dimension by `D_max`, the dimensionality term completely dominates the equation. Post-encoding dimensions can reach into the hundreds, while loss and the interpretability score live between 0 and 1. With dimension unscaled, the solver ignores the other terms and simply tries to shrink the dataset. 
+
+The interpretability score (`xplain`) is assigned by a rubric based on human readability. Passthrough continuous variables score a 0.90, while target encoding drops to 0.35. Features with an explicit, confirmed order receive a 0.70 for ordinal encoding, while unconfirmed ordinal features are penalized with a 0.30 to avoid injecting spurious structure.
+
 
 ## Dataset
 
-IEEE-CIS Fraud Detection from Kaggle. Roughly 590,000 transactions with more than 400 raw features (email domains, device types, card networks, product codes, transaction type codes) and ground-truth fraud labels. Raw data is not committed to the repository.
+IEEE-CIS Fraud Detection from Kaggle. Roughly 590,000 transactions with more than 400 raw features (email domains, device types, card networks, product codes, transaction type codes) and ground-truth fraud labels. True-positive fraud rate represents roughly ~3.5% of transactions. Raw data is not committed to the repository.
 
-## Stack
+## Architecture 
 
-Python 3.11. Core dependencies: numpy, scipy, scikit-learn, pandas, joblib, pyyaml. Optional extras installed per phase: pytest for tests, PuLP and HiGHS for the MILP, PyTorch for the geometry MLPs, Streamlit for the demo.
+1. **Feature Profiler:** Evaluates every feature to determine its data type, cardinality, missingness, and mutual information with the fraud label. The label is used strictly for profiling. The main anomaly detector never sees it as a target.
+2. **Feature Segmenter:** Groups features into five domain labels (transaction amount, identity/device, behavioral frequency, temporal/timing, and card/account). Relies on rule-based logic for known naming conventions and k-means clustering for the rest.
+3. **Encoding Candidate Evaluator:** Computes the detection loss, encoded dimensionality, and an interpretability score for every feature and encoding pair.
+4. **MILP Encoding Selector:** Optimization solver selects exactly one encoding per feature under a dimensionality budget using PuLP and the HiGHS solver.
+5. **Anomaly Detector:** Runs Local Outlier Factor on the MILP-selected features and compares the PR-AUC against a uniform one-hot encoded baseline.
+6. **Structured Explainer:** Uses LOFO (leave-one-feature-out) to explain why specific transactions were flagged.
+7. **Representation Geometry Analysis:** A separate module to evaluate how the encoding choice impacts neural network superposition.
+8. **Streamlit App:** A frontend for interactively adjusting the optimization weights and viewing the associated anomaly explanations.
 
 ## Reproducing the pipeline
 
@@ -41,20 +85,32 @@ The reproduction target is under thirty minutes from a clean clone, given Kaggle
 
    The pipeline uses only `train_transaction.csv` and `train_identity.csv`.
 
-3. Run the modules in order. The pipeline is under active build; see `docs/implementation-plan.md` for current status.
+## Stack
 
-## Repository layout
+Python 3.11>= 
+- numpy 
+- scipy 
+- scikit-learn
+- pandas
+- joblib
+- pyyaml
+- pytest
+- PuLP and HiGHS Solvers (for the MILP)
+- PyTorch (for the geometry MLPs)
+- Streamlit (for the demo.)
 
-- `src/` holds the analysis modules: feature profiler, segmenter, encoding evaluator, MILP selector, anomaly detector, explainer, representation geometry.
-- `config/` pins reproducibility constants (`RANDOM_SEED`, LOF thresholds, compute caps).
-- `tests/` holds per-module unit tests, added as each module is built.
-- `demo/` holds the Streamlit application.
-- `docs/` holds the canonical spec (`project-plan.md`), the living implementation plan (`implementation-plan.md`), and short design-rationale notes (`rationale.md`).
+## Sources
 
-## References
+### Academic References
 
-- Elhage et al. (2022). Toy Models of Superposition. Transformer Circuits Thread.
-- Scherlis et al. (2022). Polysemanticity and Capacity in Neural Networks. arXiv:2210.01892.
+- Elhage et al. (2022). Toy Models of Superposition. Transformer Circuits Thread. https://transformer-circuits.pub/2022/toy_model/index.html
+- Scherlis et al. (2022). Polysemanticity and Capacity in Neural Networks. arXiv:2210.01892. https://ar5iv.labs.arxiv.org/html/2210.01892
 - Li and Fan (2026). Explainable Heterogeneous Anomaly Detection in Financial Networks via Adaptive Expert Routing. arXiv:2510.17088.
 - Breunig et al. (2000). LOF: Identifying Density-Based Local Outliers. ACM SIGMOD.
 - Potdar et al. (2017). A Comparative Study of Categorical Variable Encoding Techniques for Neural Network Classifiers. International Journal of Computer Applications, 175(4), 7–9.
+
+### Library Documentation:
+
+- Mixed-integer linear programming (MILP): https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.milp.html
+- HiGHS linear optimization software: https://highs.dev/
+- PuLP linear and mixed integer programming modeler: https://coin-or.github.io/pulp/

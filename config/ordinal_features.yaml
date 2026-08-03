@@ -1,7 +1,5 @@
-# Categoricals whose value strings encode an order; these score 0.70 on the
-# ordinal rubric. Unlisted categoricals default to 0.30 (unconfirmed ordering
-# is a liability). Inclusion/exclusion defense: notebooks/01_eda.ipynb,
-# "Ordinal candidate investigation".
+# Categoricals whose value strings encode an order score 0.70 on the ordinal rubric. 
+# Unlisted categoricals default to 0.30 (unconfirmed ordering).
 
 id_34:
   - "match_status:-1"
