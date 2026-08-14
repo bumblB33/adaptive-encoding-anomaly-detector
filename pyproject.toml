@@ -17,10 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
-milp = ["pulp>=2.8", "highspy>=1.7"]
-geometry = ["torch>=2.2"]
-demo = ["streamlit>=1.32"]
+dev = ["pytest>=8.0", "pulp>=2.8", "highspy>=1.7","torch>=2.2", "streamlit>=1.32"]
 
 [tool.setuptools.packages.find]
 where = ["."]
