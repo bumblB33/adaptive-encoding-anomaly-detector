@@ -6,7 +6,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import pairwise_distances_argmin
 from sklearn.preprocessing import StandardScaler
 
-from config.defaults import RANDOM_SEED
+from core.config.defaults import RANDOM_SEED
 
 SEGMENT_LABELS: tuple[str, ...] = (
     "transaction amount",

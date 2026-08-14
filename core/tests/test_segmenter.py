@@ -1,9 +1,10 @@
 import json
 
+from core.src import feature_segmenter
 import pytest
 
-from config import defaults
-from src import feature_segmenter, utils
+from core.config import defaults
+from core.src import utils
 
 _RULE_FIXTURE_COLUMNS = [
     # transaction amount

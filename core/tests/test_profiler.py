@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from config import defaults
-from src import feature_profiler
+from core.config import defaults
+from core.src import feature_profiler
 
 
 @pytest.fixture

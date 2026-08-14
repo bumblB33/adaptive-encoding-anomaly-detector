@@ -1,4 +1,4 @@
-## 2. Glossary
+# Glossary
 
 **Encoding**
 

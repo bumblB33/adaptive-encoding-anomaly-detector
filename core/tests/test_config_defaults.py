@@ -1,4 +1,4 @@
-from config import defaults
+from core.config import defaults
 
 
 def test_random_seed_is_42():
