@@ -22,7 +22,7 @@ __pycache__/
 *.tar.gz
 
 # Raw IEEE-CIS CSV extracts (paired with *.zip rule above; download via Kaggle, see README.md)
-data/*.csv
+**/*.csv
 data/raw/
 *.egg-info/
 dist/
