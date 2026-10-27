@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.feature_selection import mutual_info_classif as _mutual_info_classifier
 
 from config.defaults import RANDOM_SEED
-from config.feature_profile import _TOP_VALUES_LIMIT, _CATEGORICAL_MISSING_TOKEN
+from config.feature_profile import _CATEGORICAL_MISSING_TOKEN, _TOP_VALUES_LIMIT
 
 
 def _is_numeric_feature(series: pd.Series) -> bool:
