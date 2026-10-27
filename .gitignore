@@ -37,3 +37,7 @@ outputs/*
 !outputs/.gitkeep
 !outputs/sample/
 !outputs/sample/**
+
+# Audit working files
+research_notes/
+reports/
