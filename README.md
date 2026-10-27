@@ -49,6 +49,8 @@ Raw data is not committed to the repository.
    pytest
    ```
 
+   The scratch scripts in `scripts/` need the `exploration` extra: `pip install -e ".[exploration]"`.
+
 2. Download the data.
    - Accept the competition rules in a browser at https://www.kaggle.com/competitions/ieee-fraud-detection/rules.
    - Authenticate the Kaggle CLI as described in the [Kaggle CLI docs](https://github.com/Kaggle/kaggle-api/blob/main/docs/README.md).

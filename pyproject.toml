@@ -8,21 +8,21 @@ version = "0.1.0"
 description = "MILP-based encoding selection + LOF anomaly detection on IEEE-CIS fraud data"
 requires-python = ">=3.11"
 dependencies = [
-    "dtw-python",
     "numpy>=1.26",
     "scipy>=1.11",
     "scikit-learn>=1.4",
     "joblib>=1.3",
     "pandas>=2.2",
     "pyyaml>=6.0",
-    "openpyxl",
-    "pytest>=8.0",
-    "pulp>=2.8",
-    "highspy>=1.7",
-    "torch>=2.2",
-    "streamlit>=1.32",
-    "matplotlib"
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+milp = ["pulp>=2.8", "highspy>=1.7"]
+geometry = ["torch>=2.2"]
+demo = ["streamlit>=1.32"]
+# dtw-python is GPL-3.0-or-later; kept out of the core install so it is never a runtime dependency.
+exploration = ["dtw-python>=1.5", "matplotlib>=3.8", "openpyxl>=3.1"]
 
 [tool.setuptools.packages.find]
 where = ["."]
