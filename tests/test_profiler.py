@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from config import defaults
-from src import feature_profiler
+from src import feature_profiler, utils
 
 
 @pytest.fixture
@@ -145,9 +145,9 @@ def test_handles_missing_values_without_error(toy_frame):
 def test_save_load_roundtrip(toy_frame, tmp_path):
     profile = feature_profiler.profile_dataframe(toy_frame, label_column="label")
     out = tmp_path / "feature_profile.json"
-    feature_profiler.save_profile_as_json(profile, out)
+    utils.save_to_json(profile, out)
     assert out.exists()
-    reloaded = feature_profiler.load_profile_from_json(out)
+    reloaded = utils.load_from_json(out)
     assert reloaded == profile
 
 
@@ -155,7 +155,7 @@ def test_save_writes_valid_json(toy_frame, tmp_path):
     """Output must survive plain json.load. No numpy types leaking."""
     profile = feature_profiler.profile_dataframe(toy_frame, label_column="label")
     out = tmp_path / "feature_profile.json"
-    feature_profiler.save_profile_as_json(profile, out)
+    utils.save_to_json(profile, out)
     with open(out) as f:
         data = json.load(f)
     assert set(data.keys()) == set(toy_frame.columns)
