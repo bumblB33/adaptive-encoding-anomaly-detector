@@ -21,6 +21,8 @@ dev = ["pytest>=8.0"]
 milp = ["pulp>=2.8", "highspy>=1.7"]
 geometry = ["torch>=2.2"]
 demo = ["streamlit>=1.32"]
+# dtw-python is GPL-3.0-or-later; kept out of the core install so it is never a runtime dependency.
+exploration = ["dtw-python>=1.5", "matplotlib>=3.8"]
 
 [tool.setuptools.packages.find]
 where = ["."]

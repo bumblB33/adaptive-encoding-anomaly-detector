@@ -1,3 +1,5 @@
+import pytest
+
 from config import defaults
 
 
@@ -23,3 +25,7 @@ def test_lofo_mode_default_is_feature():
 
 def test_lofo_mode_in_supported_set():
     assert defaults.LOFO_MODE in {"feature", "segment"}
+
+
+def test_lof_contamination_matches_threshold_percentile():
+    assert defaults.LOF_CONTAMINATION == pytest.approx(0.035)
