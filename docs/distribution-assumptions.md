@@ -13,7 +13,7 @@
 
 - Gaussian? Power Law? Sparse? Skewed? Scatter? Linear? Clustered?
 
-For EEG data, DTW for time series?
+For time-ordered features (TransactionDT, D1-D15), DTW for time series?
 
 - https://dynamictimewarping.github.io/
 - pip install dtw-python

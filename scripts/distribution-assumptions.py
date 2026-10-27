@@ -1,4 +1,6 @@
-# /usr/bin/env python3
+#!/usr/bin/env python3
 from sklearn.neighbors import LocalOutlierFactor
 
-LOF = LocalOutlierFactor(n_neighbors=20, contamination=0.1, novelty=True)
+from config.defaults import LOF_CONTAMINATION
+
+LOF = LocalOutlierFactor(contamination=LOF_CONTAMINATION, novelty=True)
